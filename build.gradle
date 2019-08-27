@@ -19,6 +19,7 @@ sourceCompatibility = 1.8
 repositories {
     mavenCentral()
     jcenter()
+    maven { url "https://dl.bintray.com/lightningkite/com.lightningkite.kotlin" }
 }
 
 dependencies {
@@ -42,6 +43,8 @@ dependencies {
     implementation "org.jetbrains.kotlin:kotlin-script-util:$kotlinVersion"
     implementation "org.jetbrains.kotlin:kotlin-script-runtime:$kotlinVersion"
     implementation "org.jetbrains.kotlin:kotlin-scripting-compiler-embeddable:$kotlinVersion"
+
+    implementation("com.lightningkite.kotlin:okhttp:0.6.5")
 }
 
 compileKotlin {
