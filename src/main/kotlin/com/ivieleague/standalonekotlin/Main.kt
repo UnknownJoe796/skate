@@ -34,7 +34,7 @@ fun main(vararg args: String) {
                 sources = fileInfo.sources,
                 libraries = fileInfo.libraries,
                 folder = fileInfo.projectFolder,
-                mainClass = fileInfo.fileClassName
+                mainClass = fileInfo.main
             )
             println("Project refreshed at $project")
         }
@@ -46,7 +46,7 @@ fun main(vararg args: String) {
                 sources = fileInfo.sources,
                 libraries = fileInfo.libraries,
                 folder = fileInfo.projectFolder,
-                mainClass = fileInfo.fileClassName
+                mainClass = fileInfo.main
             )
             IntelliJ.launch(project)
             IntelliJ.launch(project.resolve("src/${file.name}"))

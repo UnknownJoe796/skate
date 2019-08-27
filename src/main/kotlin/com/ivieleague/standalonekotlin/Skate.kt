@@ -113,7 +113,8 @@ annotation class Import(val file: String)
         val packageName: String?,
         val repositories: List<String>,
         val dependsOn: List<String>,
-        val includes: List<String>
+        val includes: List<String>,
+        val hasMain: Boolean
     ) {
         val buildFolder
             get() = Skate.buildFolder.resolve(
@@ -129,6 +130,8 @@ annotation class Import(val file: String)
             )
         val fileClassName: String
             get() = (packageName?.let { it + "." } ?: "") + file.nameWithoutExtension.capitalize() + "Kt"
+        val main: String?
+            get() = if (hasMain) fileClassName else null
         val sources: List<File>
             get() {
                 println("Collecting sources...")
@@ -156,6 +159,7 @@ annotation class Import(val file: String)
         val depStart = "@file:DependsOn(\""
         val incStart = "@file:Import(\""
         var packageName: String? = null
+        var hasMain: Boolean = false
         val repositories = ArrayList<String>()
         val dependsOn = ArrayList<String>()
         val includes = ArrayList<String>()
@@ -176,9 +180,12 @@ annotation class Import(val file: String)
                         it.startsWith("package") -> {
                             packageName = it.substringAfter("package ")
                         }
+                        it.startsWith("fun main(") -> {
+                            hasMain = true
+                        }
                     }
                 }
         }
-        return Result(file, packageName, repositories, dependsOn, includes)
+        return Result(file, packageName, repositories, dependsOn, includes, hasMain)
     }
 }
