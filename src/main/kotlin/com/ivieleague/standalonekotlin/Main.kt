@@ -33,7 +33,8 @@ fun main(vararg args: String) {
             val project = IntelliJ.singleModuleProject(
                 sources = fileInfo.sources,
                 libraries = fileInfo.libraries,
-                folder = fileInfo.projectFolder
+                folder = fileInfo.projectFolder,
+                mainClass = fileInfo.main
             )
             println("Project refreshed at $project")
         }
@@ -44,7 +45,8 @@ fun main(vararg args: String) {
             val project = IntelliJ.singleModuleProject(
                 sources = fileInfo.sources,
                 libraries = fileInfo.libraries,
-                folder = fileInfo.projectFolder
+                folder = fileInfo.projectFolder,
+                mainClass = fileInfo.main
             )
             IntelliJ.launch(project)
             IntelliJ.launch(project.resolve("src/${file.name}"))
