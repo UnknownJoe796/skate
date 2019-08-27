@@ -16,19 +16,19 @@ object IntelliJ {
     */
 
     fun launch(withFileOrFolder: File) {
-        val executable = File("C:\\Program Files\\JetBrains")
-            .takeIf { it.exists() }
-            ?.listFiles()?.asSequence()
-            ?.filter { it.isDirectory }
-            ?.sortedByDescending { it.name }
-            ?.firstOrNull()
-            ?.resolve("bin/idea64.exe")
-//            ?:
-//            File(System.getProperty("user.home"))
-//                .resolve("Library/Application Support/JetBrains/Toolbox/apps")
-            ?: "idea"
-
-        ProcessBuilder().command(executable.toString(), withFileOrFolder.toString()).start()
+        val osName = System.getProperty("os.name")
+        val executable = when {
+            osName.contains("win", true) -> File("C:\\Program Files\\JetBrains")
+                .takeIf { it.exists() }
+                ?.listFiles()?.asSequence()
+                ?.filter { it.isDirectory }
+                ?.sortedByDescending { it.name }
+                ?.firstOrNull()
+                ?.resolve("bin/idea64.exe")
+            else -> null
+        }?.absolutePath ?: "idea"
+        println("Launching IntelliJ using: $executable")
+        ProcessBuilder().command(executable, withFileOrFolder.toString()).start()
     }
 
     fun singleModuleProject(

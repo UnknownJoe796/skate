@@ -1,20 +1,16 @@
 package com.ivieleague.standalonekotlin
 
 import java.io.File
+import java.util.*
 
 fun main(vararg args: String) {
-    //skate test.skt
-    //skate -edit test.skt
-    //skate test.skt arg0 arg1 arg2 ...
-    //skate -interactive test.skt
-    //skate -action test.skt "build()"
-    if (args.size == 0) {
+    if (args.isEmpty()) {
         println("Usage: ")
-        println("Run: skate [file] [arguments...]")
-        println("Edit: skate -edit [file]")
-        println("Refresh Project: skate -project [file]")
-        println("Interactive: skate -interactive [file]")
-        println("Single Action: skate -action [file] \"lineOfKotlin()\"")
+        println("Run: skate <file> [arguments...]")
+        println("Edit: skate -edit <file>")
+        println("Refresh Project: skate -project <file>")
+        println("Interactive: skate -interactive <file> [-y]")
+        println("Single Action: skate -action <file> \"lineOfKotlin()\"")
         return
     }
 
@@ -32,6 +28,7 @@ fun main(vararg args: String) {
         }
         "p", "project" -> {
             val file = File(args[1])
+            if (checkIfFileShouldBeCreated(file, args)) return
             val fileInfo = Skate.getKtInfo(file)
             val project = IntelliJ.singleModuleProject(
                 sources = fileInfo.sources,
@@ -42,6 +39,7 @@ fun main(vararg args: String) {
         }
         "e", "edit" -> {
             val file = File(args[1])
+            if (checkIfFileShouldBeCreated(file, args)) return
             val fileInfo = Skate.getKtInfo(file)
             val project = IntelliJ.singleModuleProject(
                 sources = fileInfo.sources,
@@ -69,4 +67,30 @@ fun main(vararg args: String) {
             )
         }
     }
+}
+
+private fun checkIfFileShouldBeCreated(file: File, args: Array<out String>): Boolean {
+    if (!file.exists()) {
+        if (args.contains("-y") || args.contains("-Y")) {
+            file.createNewFile()
+        } else {
+            val scanner = Scanner(System.`in`)
+            println("The file '$file' does not exist.  Do you wish to create it? [y/n]")
+            label@ while (true) {
+                when (scanner.nextLine()) {
+                    "y", "Y", "yes", "YES" -> {
+                        file.createNewFile()
+                        break@label
+                    }
+                    "n", "N", "no", "NO" -> {
+                        return true
+                    }
+                    else -> {
+                        //Repeat
+                    }
+                }
+            }
+        }
+    }
+    return false
 }
