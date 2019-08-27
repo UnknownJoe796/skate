@@ -27,7 +27,7 @@ object IntelliJ {
                 ?.resolve("bin/idea64.exe")
             else -> null
         }?.absolutePath ?: "idea"
-        println("Launching IntelliJ using: $executable")
+        println("Launching IntelliJ using: $executable \"$withFileOrFolder\"")
         ProcessBuilder().command(executable, withFileOrFolder.toString()).start()
     }
 

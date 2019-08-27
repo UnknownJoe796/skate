@@ -47,6 +47,7 @@ fun main(vararg args: String) {
                 folder = fileInfo.projectFolder
             )
             IntelliJ.launch(project)
+            IntelliJ.launch(project.resolve("src/${file.name}"))
         }
         "i", "interactive" -> {
             val file = File(args[1])
