@@ -34,7 +34,8 @@ object IntelliJ {
     fun singleModuleProject(
         sources: List<File>,
         libraries: List<Library>,
-        folder: File
+        folder: File,
+        mainClass: String? = null
     ): File {
         folder.mkdirs()
         folder.listFiles()?.forEach { it.deleteRecursively() }
@@ -59,6 +60,9 @@ object IntelliJ {
         ideaFolder.resolve("modules.xml")
             .writeText(modulesFile(folder, listOf(moduleFile)).toString(prettyFormat = true))
         ideaFolder.resolve("misc.xml").writeText(miscFile(folder).toString(prettyFormat = true))
+        mainClass?.let {
+            ideaFolder.resolve("workspace.xml").writeText(workspaceFile(it).toString(prettyFormat = true))
+        }
         val libFolder = ideaFolder.resolve("libraries")
         libFolder.mkdirs()
         for (lib in libraries) {
@@ -79,6 +83,26 @@ object IntelliJ {
                         "fileurl" to "file://${module.invariantSeparatorsPath}",
                         "filepath" to module.invariantSeparatorsPath
                     )
+                }
+            }
+        }
+    }
+
+    fun workspaceFile(mainClass: String): Node = Node("project").apply {
+        includeXmlProlog = true
+        attributes["version"] = "4"
+        "component"("name" to "RunManager") {
+            "configuration"("name" to "Run", "type" to "JetRunConfigurationType", "factoryName" to "Kotlin") {
+                "module"("name" to "project")
+                "option"("name" to "VM_PARAMETERS")
+                "option"("name" to "PROGRAM_PARAMETERS")
+                "option"("name" to "ALTERNATIVE_JRE_PATH_ENABLED")
+                "option"("name" to "ALTERNATIVE_JRE_PATH")
+                "option"("name" to "PASS_PARENT_ENVS", "value" to "true")
+                "option"("name" to "MAIN_CLASS_NAME", "value" to mainClass)
+                "option"("name" to "WORKING_DIRECTORY")
+                "method"("v" to "2") {
+                    "option"("name" to "Make", "enabled" to "true")
                 }
             }
         }
