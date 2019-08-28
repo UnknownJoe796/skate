@@ -1,4 +1,4 @@
-package com.ivieleague.standalonekotlin
+package com.ivieleague.skate
 
 import org.redundent.kotlin.xml.Node
 import java.io.File

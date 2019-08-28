@@ -10,8 +10,17 @@ group 'com.ivieleague'
 version '0.0.1'
 
 application {
-//    mainClassName = "com.ivieleague.standalonekotlin.JVMKt"
-    mainClassName = "com.ivieleague.standalonekotlin.MainKt"
+    mainClassName = "com.ivieleague.skate.MainKt"
+}
+
+distributions {
+    main {
+        contents {
+            from("include") {
+                into("")
+            }
+        }
+    }
 }
 
 sourceCompatibility = 1.8

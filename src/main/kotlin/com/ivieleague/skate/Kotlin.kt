@@ -1,4 +1,4 @@
-package com.ivieleague.standalonekotlin
+package com.ivieleague.skate
 
 import org.jetbrains.kotlin.build.DEFAULT_KOTLIN_SOURCE_FILES_EXTENSIONS
 import org.jetbrains.kotlin.cli.common.ExitCode
