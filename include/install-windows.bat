@@ -1,7 +1,10 @@
 @echo off
 
-SET Location="C:\Users\josep\Projects\standalone-kotlin-file\build\install\skate"
-rem SET Location="%CD%"
+SET Location="%CD%"
+if not exist "%Location%\bin" (
+    echo You need to run this file from within the same directory.
+    exit /B 1
+)
 SETX /M PATH "%PATH%;%Location%\bin"
 
 REG ADD "HKCR\*\shell\SkateKotlinRun" /ve /d "Run with Skate" /f
