@@ -1,4 +1,4 @@
-package com.ivieleague.standalonekotlin
+package com.ivieleague.skate
 
 import lk.kotlin.okhttp.lambdaString
 import okhttp3.Request

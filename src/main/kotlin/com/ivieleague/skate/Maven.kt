@@ -1,4 +1,4 @@
-package com.ivieleague.standalonekotlin
+package com.ivieleague.skate
 
 import org.apache.maven.repository.internal.MavenRepositorySystemUtils
 import org.eclipse.aether.RepositorySystem

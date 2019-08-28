@@ -1,4 +1,4 @@
-package com.ivieleague.standalonekotlin
+package com.ivieleague.skate
 
 import java.io.OutputStream
 import java.io.PrintStream
