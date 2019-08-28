@@ -17,7 +17,10 @@ fun File.createSymbolicLinkTo(other: File): Boolean {
                     it.writeText("mklink %1 %2")
                 }
             }
-            ProcessBuilder().command(batLoc.absolutePath, this.absolutePath, other.absolutePath).inheritIO().start()
+            ProcessBuilder()
+                .command(batLoc.absolutePath, this.absolutePath, other.absolutePath)
+//                .inheritIO()
+                .start()
                 .waitFor(100L, TimeUnit.MILLISECONDS)
             return true
         }
