@@ -29,10 +29,10 @@ fun main(vararg args: String) {
         "p", "project" -> {
             val file = File(args[1])
             if (checkIfFileShouldBeCreated(file, args)) return
-            val fileInfo = Skate.getKtInfo(file)
+            val fileInfo = Skate.resolve(file)
             val project = IntelliJ.singleModuleProject(
-                sources = fileInfo.sources,
-                libraries = fileInfo.libraries,
+                sources = fileInfo.sources.distinct().toList(),
+                libraries = fileInfo.libraries.distinct().toList(),
                 folder = fileInfo.projectFolder,
                 mainClass = fileInfo.main
             )
@@ -41,10 +41,10 @@ fun main(vararg args: String) {
         "e", "edit" -> {
             val file = File(args[1])
             if (checkIfFileShouldBeCreated(file, args)) return
-            val fileInfo = Skate.getKtInfo(file)
+            val fileInfo = Skate.resolve(file)
             val project = IntelliJ.singleModuleProject(
-                sources = fileInfo.sources,
-                libraries = fileInfo.libraries,
+                sources = fileInfo.sources.distinct().toList(),
+                libraries = fileInfo.libraries.distinct().toList(),
                 folder = fileInfo.projectFolder,
                 mainClass = fileInfo.main
             )

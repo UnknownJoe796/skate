@@ -43,10 +43,10 @@ object IntelliJ {
         for (file in sources) {
             srcFolder.resolve(file.name)
                 .let {
-                    val current = it
+                    var current = it
                     var num = 2
                     while (current.exists()) {
-                        srcFolder.resolve(file.nameWithoutExtension + num.toString() + "." + file.extension)
+                        current = srcFolder.resolve(file.nameWithoutExtension + num.toString() + "." + file.extension)
                         num++
                     }
                     current

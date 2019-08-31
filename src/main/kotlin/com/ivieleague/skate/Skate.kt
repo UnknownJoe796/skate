@@ -12,11 +12,6 @@ import kotlin.math.absoluteValue
 
 object Skate {
 
-    data class JarsResult(
-        val fileInfo: Result,
-        val jars: List<File>
-    )
-
     val rootFolder = File(System.getProperty("user.home")).resolve(".skate")
     val buildFolder = rootFolder.resolve("build")
     val projectFolder = rootFolder.resolve("project")
@@ -32,21 +27,24 @@ object Skate {
     const val CACHE_TIME = 1000L * 60L * 60L //One hour
 
     fun annotationStubsFile(forPackage: String?): File {
-        val file = rootFolder.resolve("FileAnnotations_${forPackage?.replace('.', '_') ?: "default"}.kt")
+        val file = rootFolder.resolve("FileAnnotations2_${forPackage?.replace('.', '_') ?: "default"}.kt")
         if (!file.exists()) {
             val packageLine = forPackage?.let { "package $it" } ?: ""
             file.writeText(
                 """
 $packageLine
 
+@Retention(AnnotationRetention.SOURCE)
 @Target(AnnotationTarget.FILE)
 @Repeatable
 annotation class Repository(val url: String)
 
+@Retention(AnnotationRetention.SOURCE)
 @Target(AnnotationTarget.FILE)
 @Repeatable
 annotation class DependsOn(val maven: String)
 
+@Retention(AnnotationRetention.SOURCE)
 @Target(AnnotationTarget.FILE)
 @Repeatable
 annotation class Import(val file: String)
@@ -61,9 +59,10 @@ annotation class Import(val file: String)
             throw SecurityException("For safety purposes, you cannot include a source file from an insecure URL.")
         val now = System.currentTimeMillis()
         val file =
-            Skate.cacheFolder.resolve(url.substringAfterLast('/').filter { it.isJavaIdentifierPart() }.removeSuffix("kt").plus(
-                ".kt"
-            )
+            Skate.cacheFolder.resolve(
+                url.substringAfterLast('/').filter { it.isJavaIdentifierPart() }.removeSuffix("kt").plus(
+                    ".kt"
+                )
             )
         val timePrefix = "//System.currentTimeMillis() == "
         if (file.exists()) {
@@ -95,28 +94,35 @@ annotation class Import(val file: String)
 
     }
 
+    data class JarsResult(
+        val fileInfo: FullResult,
+        val jars: List<File>
+    )
+
     fun getJarsForKt(file: File): JarsResult {
-        val fileInfo = getKtInfo(file)
-        val libraries = fileInfo.libraries
+        val fileInfo = resolve(file)
+        val libraries = fileInfo.libraries.map { it.default }.toList()
         val compiled = Kotlin.compileJvm(
-            source = fileInfo.sources,
-            withLibraries = libraries.map { it.default },
+            source = fileInfo.sources.distinct().toList(),
+            withLibraries = libraries,
             buildFolder = fileInfo.buildFolder,
             out = fileInfo.buildFolder.resolve("output")
         )
         println(compiled.messages.filter { it.severity >= CompilerMessageSeverity.STRONG_WARNING }.joinToString("\n") { it.message + "\n at " + it.location })
-        return JarsResult(jars = libraries.map { it.default } + compiled.output, fileInfo = fileInfo)
+        return JarsResult(jars = libraries + compiled.output, fileInfo = fileInfo)
     }
 
-    data class Result(
+    data class FullResult(
         val file: File,
-        val packageName: String?,
-        val repositories: List<String>,
-        val dependsOn: List<String>,
-        val includes: List<String>,
         val hasMain: Boolean,
+        val packageName: String?,
+        val dependsOn: List<Library>,
+        var includes: List<FullResult> = listOf(),
         val imports: List<String>
     ) {
+        val sources: Sequence<File> get() = sequenceOf(file, annotationStubsFile(packageName)) + includes.asSequence().flatMap { it.sources }
+        val libraries: Sequence<Library> get() = dependsOn.asSequence() + includes.asSequence().flatMap { it.libraries }
+
         val buildFolder
             get() = Skate.buildFolder.resolve(
                 "${file.nameWithoutExtension}-${file.absolutePath.hashCode().absoluteValue.toString(
@@ -133,30 +139,10 @@ annotation class Import(val file: String)
             get() = (packageName?.let { it + "." } ?: "") + file.nameWithoutExtension.capitalize() + "Kt"
         val main: String?
             get() = if (hasMain) fileClassName else null
-        val sources: List<File>
-            get() {
-                println("Collecting sources...")
-                return listOf(file) + includes.map {
-                    if (it.startsWith("http")) {
-                        resolveRemoteFile(it)
-                    } else {
-                        file.resolve(it)
-                    }
-                } + annotationStubsFile(packageName)
-            }
-        val libraries: List<Library>
-            get() {
-                return Maven.libraries(
-                    repositories = repositories.map {
-                        RemoteRepository.Builder(it.replace(Regex("[:/.]+"), "_"), "default", it).build()
-                    } + Maven.defaultRepositories,
-                    dependencies = listOf(Maven.compile(Maven.kotlinStandardLibrary)) + dependsOn.map { Maven.compile(it) }
-                )
-            }
         val autoImports: List<String> get() = imports + listOf(packageName + ".*")
     }
 
-    fun getKtInfo(file: File): Result {
+    fun resolve(file: File): FullResult {
         val repStart = "@file:Repository(\""
         val depStart = "@file:DependsOn(\""
         val incStart = "@file:Import(\""
@@ -192,6 +178,24 @@ annotation class Import(val file: String)
                     }
                 }
         }
-        return Result(file, packageName, repositories, dependsOn, includes, hasMain, imports)
+        val includedFiles = includes.map {
+            if (it.startsWith("http")) {
+                resolveRemoteFile(it)
+            } else {
+                file.parentFile.resolve(it)
+            }
+        }
+        return FullResult(
+            file = file,
+            hasMain = hasMain,
+            packageName = packageName,
+            dependsOn = Maven.libraries(
+                repositories = repositories.map {
+                    RemoteRepository.Builder(it.replace(Regex("[:/.]+"), "_"), "default", it).build()
+                } + listOf(Maven.central, Maven.jcenter, Maven.google, Maven.local),
+                dependencies = listOf(Maven.compile(Maven.kotlinStandardLibrary)) + dependsOn.map { Maven.compile(it) }
+            ),
+            includes = includedFiles.map { resolve(it) }
+        )
     }
 }
