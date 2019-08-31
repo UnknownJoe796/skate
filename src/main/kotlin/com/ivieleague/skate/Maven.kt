@@ -128,6 +128,7 @@ object Maven {
         "default",
         "file://" + File(File(System.getProperty("user.home")), ".m2").invariantSeparatorsPath
     ).build()
+    val defaultRepositories = listOf(central, jcenter, google, local)
 
     const val kotlinStandardLibrary = "org.jetbrains.kotlin:kotlin-stdlib:1.3.+"
 
@@ -141,7 +142,7 @@ fun Artifact.additionalArtifacts(): Sequence<Artifact> = sequenceOf(
 
 fun main() {
     Maven.libraries(
-        repositories = listOf(Maven.central, Maven.jcenter, Maven.local),
+        repositories = Maven.defaultRepositories,
         dependencies = listOf(Maven.compile("org.jetbrains.kotlin:kotlin-compiler-embeddable:jar:1.3.+"))
     ).let {
         println("Dependencies: ")
