@@ -3,7 +3,7 @@ package com.ivieleague.skate
 import java.io.OutputStream
 import java.io.PrintStream
 
-class NullOutputStream() : OutputStream() {
+object NullOutputStream : OutputStream() {
     override fun write(b: Int) {
     }
 
@@ -24,8 +24,8 @@ inline fun <T> suppressStandardOutputAndError(action: () -> T): T {
     val realErr = System.err
     val realOut = System.out
     val result = try {
-        System.setOut(PrintStream(OutputStream.nullOutputStream()))
-        System.setErr(PrintStream(OutputStream.nullOutputStream()))
+        System.setOut(PrintStream(NullOutputStream))
+        System.setErr(PrintStream(NullOutputStream))
         action()
     } finally {
         System.setErr(realErr)

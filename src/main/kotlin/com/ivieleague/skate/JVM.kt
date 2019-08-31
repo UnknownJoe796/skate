@@ -122,11 +122,11 @@ object JVM {
 
         for (imp in autoImports) {
             try {
-                println("import $imp")
                 e.eval("import $imp")
             } catch (e: Exception) {
 
             }
+            println("import $imp")
         }
 
         e

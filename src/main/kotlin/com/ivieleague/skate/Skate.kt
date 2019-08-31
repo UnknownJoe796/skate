@@ -108,7 +108,7 @@ annotation class Import(val file: String)
             buildFolder = fileInfo.buildFolder,
             out = fileInfo.buildFolder.resolve("output")
         )
-        println(compiled.messages.filter { it.severity >= CompilerMessageSeverity.STRONG_WARNING }.joinToString("\n") { it.message + "\n at " + it.location })
+        println(compiled.messages.filter { it.severity <= CompilerMessageSeverity.ERROR }.joinToString("\n") { it.message + "\n at " + it.location })
         return JarsResult(jars = libraries + compiled.output, fileInfo = fileInfo)
     }
 
@@ -195,7 +195,8 @@ annotation class Import(val file: String)
                 } + listOf(Maven.central, Maven.jcenter, Maven.google, Maven.local),
                 dependencies = listOf(Maven.compile(Maven.kotlinStandardLibrary)) + dependsOn.map { Maven.compile(it) }
             ),
-            includes = includedFiles.map { resolve(it) }
+            includes = includedFiles.map { resolve(it) },
+            imports = imports
         )
     }
 }
