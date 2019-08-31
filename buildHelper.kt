@@ -116,7 +116,7 @@ fun release(versionString: String, updateInfo: String = "") {
 
     //Build
     println("Building")
-    val process = ProcessBuilder(".\\gradlew.bat", "installDist").inheritIO().start()
+    val process = ProcessBuilder(".\\gradlew.bat", "distZip").inheritIO().start()
     process.waitFor(60, TimeUnit.SECONDS)
     assert(process.exitValue() == 0)
 
