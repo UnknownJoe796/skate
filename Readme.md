@@ -22,11 +22,7 @@ fun main() = print(createHTML().html {
 
 Skate does **NOT** support `.kts` files (at least yet) due to some complications with their interactions with IntelliJ 
 projects and the embedded Kotlin compiler.  If you're interested in helping or extending this, please contact me on the 
-Kotlin Slack channel.  My username is `josephivie`.
-
-**This is primarily an educational project** to learn working with the Kotlin compiler, Maven, and IntelliJ to complete a 
-full build.  Eventually this will lead to a library for building multiplatform projects without a build system - instead 
-just using a Maven library to make it more convenient.
+Kotlin Slack channel.  My username is `josephivie`.  Alternatively, there's an open issue for discussion on GitHub.
 
 ## How do I use it?
 
@@ -37,6 +33,9 @@ things like this:
 - `skate -e myFile.kt` - Opens the file as a project in IntelliJ with full completion
 - `skate -p myFile.kt` - Creates/updates an IntelliJ project for the file without opening it.
 - `skate -i myFile.kt` - Opens a REPL with your definitions loaded in.
+
+There's an installer also bundled with the ZIP; to use it, place the folder where you want it to stay and run the 
+installer script for your platform.  As simple as that.
 
 ## REPL Additions
 
@@ -64,10 +63,6 @@ From within the REPL, you can do these things:
 - Does not support `.kts` at all
     - On a side note, I recommend using normal Kotlin files anyways.  No need for multiple standards.
     - If you know how to change this such that KTS is supported, please contact me!
-
-## Known Issues
-
-- Under some certain circumstances, you have to run the script multiple times to get all the dependencies to resolve.  The cause of this is unknown to me at the moment.
     
 ## License
 
