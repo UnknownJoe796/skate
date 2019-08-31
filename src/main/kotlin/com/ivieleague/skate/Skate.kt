@@ -108,7 +108,7 @@ annotation class Import(val file: String)
             buildFolder = fileInfo.buildFolder,
             out = fileInfo.buildFolder.resolve("output")
         )
-        println(compiled.messages.filter { it.severity >= CompilerMessageSeverity.STRONG_WARNING }.joinToString("\n") { it.message + "\n at " + it.location })
+        println(compiled.messages.filter { it.severity <= CompilerMessageSeverity.ERROR }.joinToString("\n") { it.message + "\n at " + it.location })
         return JarsResult(jars = libraries + compiled.output, fileInfo = fileInfo)
     }
 
@@ -117,7 +117,8 @@ annotation class Import(val file: String)
         val hasMain: Boolean,
         val packageName: String?,
         val dependsOn: List<Library>,
-        var includes: List<FullResult> = listOf()
+        var includes: List<FullResult> = listOf(),
+        val imports: List<String>
     ) {
         val sources: Sequence<File> get() = sequenceOf(file, annotationStubsFile(packageName)) + includes.asSequence().flatMap { it.sources }
         val libraries: Sequence<Library> get() = dependsOn.asSequence() + includes.asSequence().flatMap { it.libraries }
@@ -138,6 +139,7 @@ annotation class Import(val file: String)
             get() = (packageName?.let { it + "." } ?: "") + file.nameWithoutExtension.capitalize() + "Kt"
         val main: String?
             get() = if (hasMain) fileClassName else null
+        val autoImports: List<String> get() = imports + listOf(packageName + ".*")
     }
 
     fun resolve(file: File): FullResult {
@@ -149,6 +151,7 @@ annotation class Import(val file: String)
         val repositories = ArrayList<String>()
         val dependsOn = ArrayList<String>()
         val includes = ArrayList<String>()
+        val imports = ArrayList<String>()
         file.useLines { lines ->
             lines
                 .map { it.trim() }
@@ -165,6 +168,9 @@ annotation class Import(val file: String)
                         }
                         it.startsWith("package") -> {
                             packageName = it.substringAfter("package ")
+                        }
+                        it.startsWith("import ") -> {
+                            imports.add(it.substringAfter("import "))
                         }
                         it.startsWith("fun main(") -> {
                             hasMain = true
@@ -189,7 +195,8 @@ annotation class Import(val file: String)
                 } + listOf(Maven.central, Maven.jcenter, Maven.google, Maven.local),
                 dependencies = listOf(Maven.compile(Maven.kotlinStandardLibrary)) + dependsOn.map { Maven.compile(it) }
             ),
-            includes = includedFiles.map { resolve(it) }
+            includes = includedFiles.map { resolve(it) },
+            imports = imports
         )
     }
 }

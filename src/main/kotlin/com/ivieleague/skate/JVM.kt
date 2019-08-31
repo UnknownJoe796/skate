@@ -1,5 +1,8 @@
 package com.ivieleague.skate
 
+import org.eclipse.aether.artifact.DefaultArtifact
+import org.eclipse.aether.graph.Dependency
+import org.eclipse.aether.repository.RemoteRepository
 import java.io.File
 import java.lang.reflect.Method
 import java.net.URLClassLoader
@@ -27,25 +30,12 @@ object JVM {
         }
     }
 
-    fun runWithLine(jars: List<File>, autoImport: String? = null, line: String) {
+    fun runWithLine(jars: List<File>, autoImports: List<String> = listOf(), line: String) {
         for (jar in jars) {
             jarLoader.addFile(jar)
         }
 
-        val engine = run {
-            val e = Kotlin.engine(jarLoader)
-
-            autoImport?.let {
-                try {
-                    println("import $it.*")
-                    e.eval("import $it.*")
-                } catch (e: Exception) {
-
-                }
-            }
-
-            e
-        }
+        val engine = loadEngine(jarLoader, autoImports)
         try {
             println(engine.eval(line))
         } catch (e: Exception) {
@@ -53,50 +43,99 @@ object JVM {
         }
     }
 
-    fun runInteractive(jars: List<File>, autoImport: String? = null) {
+    fun runInteractive(
+        jars: List<File>,
+        autoImports: List<String> = listOf(),
+        repositories: List<RemoteRepository> = Maven.defaultRepositories,
+        originalFile: File = File("")
+    ) {
         for (jar in jars) {
             jarLoader.addFile(jar)
         }
 
-        val engine = run {
-            val e = Kotlin.engine(jarLoader)
-
-            autoImport?.let {
-                try {
-                    println("import $it.*")
-                    e.eval("import $it.*")
-                } catch (e: Exception) {
-
-                }
-            }
-
-            e
-        }
+        var engine = loadEngine(jarLoader, autoImports)
 
         println("Ready.  Type your commands below or type 'exit' to quit.")
-        println()
 
         val scanner = Scanner(System.`in`)
-        while (true) {
+        loop@ while (true) {
+            println()
             print("> ")
             System.out.flush()
             val line = scanner.nextLine()
-            if (line == "exit" || line == "exit()") break
-            try {
-                val result = engine.eval(line)
-                when (result) {
-                    is Unit -> {
+            when (line.substringBefore(' ').substringBefore('(')) {
+                "exit", "exit()", ":q", ":quit" -> break@loop
+                ":dependsOn", "@file:DependsOn", "@DependsOn" -> {
+                    val arg = getDirectiveArgument(line)
+                    try {
+                        val loaded =
+                            Maven.libraries(repositories, listOf(Dependency(DefaultArtifact(arg), "compile", false)))
+                        for (lib in loaded) {
+                            jarLoader.addFile(lib.default)
+                        }
+                        println("Successfully loaded $arg.")
+                    } catch (e: Exception) {
+                        println("Error: ${e.message}")
                     }
-                    null -> println("null")
-                    else -> println(result.toString())
+                    engine = loadEngine(jarLoader, autoImports)
                 }
-                println()
-            } catch (e: ScriptException) {
-                println("Syntax Error: ${e.message}")
-            } catch (e: Exception) {
-                e.printStackTrace()
+                ":import", "@file:Import", "@Import" -> {
+                    val arg = getDirectiveArgument(line)
+                    try {
+                        val file = if (arg.startsWith("http")) {
+                            Skate.resolveRemoteFile(arg)
+                        } else {
+                            originalFile.resolve(arg)
+                        }
+                        Skate.getJarsForKt(file).jars.forEach {
+                            jarLoader.addFile(it)
+                        }
+                    } catch (e: Exception) {
+                        println("Error: ${e.message}")
+                    }
+                    engine = loadEngine(jarLoader, autoImports)
+                }
+                ":reload" -> {
+                    engine = loadEngine(jarLoader, autoImports)
+                }
+                else -> {
+                    try {
+                        val result = engine.eval(line)
+                        when (result) {
+                            is Unit -> {
+                            }
+                            null -> println("null")
+                            else -> println(result.toString())
+                        }
+                    } catch (e: ScriptException) {
+                        println("Syntax Error: ${e.message}")
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
+                }
             }
         }
+    }
+
+    fun loadEngine(jarLoader: JarFileLoader, autoImports: List<String>) = suppressStandardOutputAndError {
+        val e = Kotlin.engine(jarLoader)
+
+        for (imp in autoImports) {
+            try {
+                e.eval("import $imp")
+            } catch (e: Exception) {
+
+            }
+            println("import $imp")
+        }
+
+        e
+    }
+
+    fun getDirectiveArgument(string: String): String = when {
+        string.startsWith('@') -> string.substringAfter('"').substringBeforeLast('"')
+        string.startsWith(':') -> string.substringAfter(' ').trim()
+        else -> ""
     }
 
     fun Class<*>.getDeclaredMethodOrNull(name: String, vararg parameterTypes: Class<*>): Method? = try {

@@ -38,6 +38,15 @@ things like this:
 - `skate -p myFile.kt` - Creates/updates an IntelliJ project for the file without opening it.
 - `skate -i myFile.kt` - Opens a REPL with your definitions loaded in.
 
+## REPL Additions
+
+From within the REPL, you can do these things:
+
+- `:q`, `:quit`, `exit`, `exit()` - Quits the REPL
+- `:dependsOn group:artifact:version` - Downloads and includes the dependency, reloading the REPL with it.
+- `:import file` - Imports another Kotlin file with its dependencies
+- `:reload` - Reloads the REPL
+
 ## Notes
 
 - These repositories are included by default:
