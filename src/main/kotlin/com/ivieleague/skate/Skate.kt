@@ -5,6 +5,7 @@ import okhttp3.Request
 import org.eclipse.aether.repository.RemoteRepository
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
 import java.io.File
+import java.io.PrintStream
 import java.text.DateFormat
 import java.util.*
 import kotlin.collections.ArrayList
@@ -54,7 +55,7 @@ annotation class Import(val file: String)
         return file
     }
 
-    fun resolveRemoteFile(url: String): File {
+    fun resolveRemoteFile(url: String, output: PrintStream): File {
         if (!url.startsWith("https"))
             throw SecurityException("For safety purposes, you cannot include a source file from an insecure URL.")
         val now = System.currentTimeMillis()
@@ -73,11 +74,11 @@ annotation class Import(val file: String)
                     ?.toLongOrNull()
             } ?: 0L
             if (now < lastLoaded + CACHE_TIME) {
-                println("Using cached $url")
+                output.println("Using cached $url")
                 return file
             }
         }
-        println("Obtaining $url")
+        output.println("Obtaining $url")
         val rawTextResult = Request.Builder().get().url(url).lambdaString().invoke()
         if (rawTextResult.isSuccessful()) {
             val fullText = "//Imported by Skate at ${DateFormat.getDateTimeInstance().format(Date(now))}\n" +
@@ -86,7 +87,7 @@ annotation class Import(val file: String)
             file.writeText(fullText)
             return file
         } else if (file.exists()) {
-            println("WARNING: Could not reload '$url', got code ${rawTextResult.code}")
+            output.println("WARNING: Could not reload '$url', got code ${rawTextResult.code}")
             return file
         } else {
             throw IllegalStateException("Could not load '$url', got code ${rawTextResult.code}.")
@@ -99,8 +100,8 @@ annotation class Import(val file: String)
         val jars: List<File>
     )
 
-    fun getJarsForKt(file: File): JarsResult {
-        val fileInfo = resolve(file)
+    fun getJarsForKt(file: File, output: PrintStream): JarsResult {
+        val fileInfo = resolve(file, output)
         val libraries = fileInfo.libraries.map { it.default }.toList()
         val compiled = Kotlin.compileJvm(
             source = fileInfo.sources.distinct().toList(),
@@ -142,7 +143,7 @@ annotation class Import(val file: String)
         val autoImports: List<String> get() = imports + listOf(packageName + ".*")
     }
 
-    fun resolve(file: File): FullResult {
+    fun resolve(file: File, output: PrintStream): FullResult {
         val repStart = "@file:Repository(\""
         val depStart = "@file:DependsOn(\""
         val incStart = "@file:Import(\""
@@ -180,7 +181,7 @@ annotation class Import(val file: String)
         }
         val includedFiles = includes.map {
             if (it.startsWith("http")) {
-                resolveRemoteFile(it)
+                resolveRemoteFile(it, output)
             } else {
                 file.parentFile.resolve(it)
             }
@@ -193,9 +194,10 @@ annotation class Import(val file: String)
                 repositories = repositories.map {
                     RemoteRepository.Builder(it.replace(Regex("[:/.]+"), "_"), "default", it).build()
                 } + listOf(Maven.central, Maven.jcenter, Maven.google, Maven.local),
-                dependencies = listOf(Maven.compile(Maven.kotlinStandardLibrary)) + dependsOn.map { Maven.compile(it) }
+                dependencies = listOf(Maven.compile(Maven.kotlinStandardLibrary)) + dependsOn.map { Maven.compile(it) },
+                output = output
             ),
-            includes = includedFiles.map { resolve(it) },
+            includes = includedFiles.map { resolve(it, output) },
             imports = imports
         )
     }

@@ -4,6 +4,7 @@ import org.eclipse.aether.artifact.DefaultArtifact
 import org.eclipse.aether.graph.Dependency
 import org.eclipse.aether.repository.RemoteRepository
 import java.io.File
+import java.io.PrintStream
 import java.lang.reflect.Method
 import java.net.URLClassLoader
 import java.util.*
@@ -16,9 +17,8 @@ object JVM {
         }
     }
 
-    val jarLoader = JarFileLoader()
-
     fun runMain(jars: List<File>, mainClass: String, arguments: Array<*>) {
+        val jarLoader = JarFileLoader()
         for (jar in jars) {
             jarLoader.addFile(jar)
         }
@@ -31,6 +31,7 @@ object JVM {
     }
 
     fun runWithLine(jars: List<File>, autoImports: List<String> = listOf(), line: String) {
+        val jarLoader = JarFileLoader()
         for (jar in jars) {
             jarLoader.addFile(jar)
         }
@@ -48,7 +49,8 @@ object JVM {
         autoImports: List<String> = listOf(),
         repositories: List<RemoteRepository> = Maven.defaultRepositories,
         originalFile: File = File("")
-    ) {
+    ): Boolean {
+        val jarLoader = JarFileLoader()
         for (jar in jars) {
             jarLoader.addFile(jar)
         }
@@ -56,6 +58,7 @@ object JVM {
         var engine = loadEngine(jarLoader, autoImports)
 
         println("Ready.  Type your commands below or type 'exit' to quit.")
+        System.out.flush()
 
         val scanner = Scanner(System.`in`)
         loop@ while (true) {
@@ -64,7 +67,7 @@ object JVM {
             System.out.flush()
             val line = scanner.nextLine()
             when (line.substringBefore(' ').substringBefore('(')) {
-                "exit", "exit()", ":q", ":quit" -> break@loop
+                "exit", "exit()", ":q", ":quit" -> return false
                 ":dependsOn", "@file:DependsOn", "@DependsOn" -> {
                     val arg = getDirectiveArgument(line)
                     try {
@@ -83,11 +86,11 @@ object JVM {
                     val arg = getDirectiveArgument(line)
                     try {
                         val file = if (arg.startsWith("http")) {
-                            Skate.resolveRemoteFile(arg)
+                            Skate.resolveRemoteFile(arg, PrintStream(System.out))
                         } else {
                             originalFile.resolve(arg)
                         }
-                        Skate.getJarsForKt(file).jars.forEach {
+                        Skate.getJarsForKt(file, PrintStream(System.out)).jars.forEach {
                             jarLoader.addFile(it)
                         }
                     } catch (e: Exception) {
@@ -96,7 +99,7 @@ object JVM {
                     engine = loadEngine(jarLoader, autoImports)
                 }
                 ":reload" -> {
-                    engine = loadEngine(jarLoader, autoImports)
+                    return true
                 }
                 else -> {
                     try {

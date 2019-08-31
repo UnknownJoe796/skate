@@ -18,6 +18,7 @@ import org.eclipse.aether.spi.connector.transport.TransporterFactory
 import org.eclipse.aether.transport.file.FileTransporterFactory
 import org.eclipse.aether.transport.http.HttpTransporterFactory
 import java.io.File
+import java.io.PrintStream
 
 
 object Maven {
@@ -42,7 +43,8 @@ object Maven {
     fun resolveVersions(
         repositories: List<RemoteRepository>,
         dependencies: List<Dependency>,
-        session: RepositorySystemSession = session()
+        session: RepositorySystemSession = session(),
+        output: PrintStream = System.out
     ): List<Dependency> {
         return dependencies.map {
             var versionString = it.artifact.version
@@ -73,9 +75,10 @@ object Maven {
     fun collect(
         repositories: List<RemoteRepository>,
         dependencies: List<Dependency>,
-        session: RepositorySystemSession = session()
+        session: RepositorySystemSession = session(),
+        output: PrintStream = System.out
     ): List<Artifact> {
-        println("Collecting dependencies...")
+        output.println("Collecting dependencies...")
         val deps = repositorySystem.resolveDependencies(
             session,
             DependencyRequest(
@@ -97,14 +100,14 @@ object Maven {
         }
     }
 
-    fun libraries(repositories: List<RemoteRepository>, dependencies: List<Dependency>): List<Library> {
+    fun libraries(repositories: List<RemoteRepository>, dependencies: List<Dependency>, output: PrintStream = System.out): List<Library> {
         val session = session()
-        val versionedDependencies = resolveVersions(repositories, dependencies, session)
-        val source = collect(repositories, versionedDependencies, session)
+        val versionedDependencies = resolveVersions(repositories, dependencies, session, output)
+        val source = collect(repositories, versionedDependencies, session, output)
         val secondaryResults = source.asSequence().flatMap {
             it.additionalArtifacts().map { ArtifactRequest(it, repositories, null) }
         }.toList().map {
-            println("Obtaining ${it.artifact.run { "$groupId:$artifactId:$version" }}")
+            output.println("Obtaining ${it.artifact.run { "$groupId:$artifactId:$version" }}")
             repositorySystem.resolveArtifact(
                 session,
                 it

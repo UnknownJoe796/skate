@@ -45,6 +45,7 @@ class GithubTasks(val git: Git, val remote: GHRepository) {
         git.checkout().setName(basedOnBranch).call()
         git.pull().setRemote("origin").setCredentialsProvider(githubAuth).setRemoteBranchName(basedOnBranch).call()
         git.branchCreate().setName(branchName).call()
+        git.checkout().setName(branchName).call()
     }
 
     fun pause(message: String) {

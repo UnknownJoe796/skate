@@ -1,6 +1,7 @@
 package com.ivieleague.skate
 
 import java.io.File
+import java.io.PrintStream
 import java.util.*
 
 fun main(vararg args: String) {
@@ -11,25 +12,20 @@ fun main(vararg args: String) {
         println("Refresh Project: skate -project <file>")
         println("Interactive: skate -interactive <file> [-y]")
         println("Single Action: skate -action <file> \"lineOfKotlin()\"")
+        println("In addition, you can include -v before the file argument to include verbose information about collecting dependencies.")
         return
     }
 
-    val flag = args[0].toLowerCase().takeIf { it.startsWith('-') }?.removePrefix("-")
+    val argsList = args.toList()
+    val flags = args.takeWhile { it.startsWith('-') }.map { it.removePrefix("-") }
+    val file = argsList.firstOrNull { !it.startsWith('-') }?.let { File(it) } ?: return
+    val verboseOutput = if(flags.contains("v")) System.out else PrintStream(NullOutputStream)
 
-    when (flag) {
-        null -> {
-            val file = File(args[0])
-            val skateResult = Skate.getJarsForKt(file)
-            JVM.runMain(
-                jars = skateResult.jars,
-                mainClass = skateResult.fileInfo.fileClassName,
-                arguments = args.sliceArray(1..args.lastIndex)
-            )
-        }
-        "p", "project" -> {
-            val file = File(args[1])
+    when {
+        flags.contains("p") || flags.contains("project") -> {
             if (checkIfFileShouldBeCreated(file, args)) return
-            val fileInfo = Skate.resolve(file)
+            println("Resolving dependencies... (use -v for more info)")
+            val fileInfo = Skate.resolve(file, verboseOutput)
             val project = IntelliJ.singleModuleProject(
                 sources = fileInfo.sources.distinct().toList(),
                 libraries = fileInfo.libraries.distinct().toList(),
@@ -38,10 +34,10 @@ fun main(vararg args: String) {
             )
             println("Project refreshed at $project")
         }
-        "e", "edit" -> {
-            val file = File(args[1])
+        flags.contains("e") || flags.contains("edit") -> {
             if (checkIfFileShouldBeCreated(file, args)) return
-            val fileInfo = Skate.resolve(file)
+            println("Resolving dependencies... (use -v for more info)")
+            val fileInfo = Skate.resolve(file, verboseOutput)
             val project = IntelliJ.singleModuleProject(
                 sources = fileInfo.sources.distinct().toList(),
                 libraries = fileInfo.libraries.distinct().toList(),
@@ -51,22 +47,34 @@ fun main(vararg args: String) {
             IntelliJ.launch(project)
             IntelliJ.launch(project.resolve("src/${file.name}"))
         }
-        "i", "interactive" -> {
-            val file = File(args[1])
-            val skateResult = Skate.getJarsForKt(file)
-            JVM.runInteractive(
-                jars = skateResult.jars,
-                autoImports = skateResult.fileInfo.autoImports
-            )
+        flags.contains("i") || flags.contains("interactive") -> {
+            while(true){
+                println("Resolving dependencies... (use -v for more info)")
+                val skateResult = Skate.getJarsForKt(file, verboseOutput)
+                val result = JVM.runInteractive(
+                    jars = skateResult.jars,
+                    autoImports = skateResult.fileInfo.autoImports
+                )
+                if(!result) return
+            }
         }
-        "a", "action" -> {
-            val file = File(args[1])
+        flags.contains("a") || flags.contains("action") -> {
+            println("Resolving dependencies... (use -v for more info)")
             val action = args.sliceArray(1..args.lastIndex).joinToString("; ")
-            val skateResult = Skate.getJarsForKt(file)
+            val skateResult = Skate.getJarsForKt(file, verboseOutput)
             JVM.runWithLine(
                 jars = skateResult.jars,
                 autoImports = skateResult.fileInfo.autoImports,
                 line = action
+            )
+        }
+        else -> {
+            println("Resolving dependencies... (use -v for more info)")
+            val skateResult = Skate.getJarsForKt(file, verboseOutput)
+            JVM.runMain(
+                jars = skateResult.jars,
+                mainClass = skateResult.fileInfo.fileClassName,
+                arguments = args.sliceArray(1..args.lastIndex)
             )
         }
     }
