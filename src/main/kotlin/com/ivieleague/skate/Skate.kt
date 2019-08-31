@@ -114,7 +114,8 @@ annotation class Import(val file: String)
         val repositories: List<String>,
         val dependsOn: List<String>,
         val includes: List<String>,
-        val hasMain: Boolean
+        val hasMain: Boolean,
+        val imports: List<String>
     ) {
         val buildFolder
             get() = Skate.buildFolder.resolve(
@@ -148,10 +149,11 @@ annotation class Import(val file: String)
                 return Maven.libraries(
                     repositories = repositories.map {
                         RemoteRepository.Builder(it.replace(Regex("[:/.]+"), "_"), "default", it).build()
-                    } + listOf(Maven.central, Maven.jcenter, Maven.google, Maven.local),
+                    } + Maven.defaultRepositories,
                     dependencies = listOf(Maven.compile(Maven.kotlinStandardLibrary)) + dependsOn.map { Maven.compile(it) }
                 )
             }
+        val autoImports: List<String> get() = imports + listOf(packageName + ".*")
     }
 
     fun getKtInfo(file: File): Result {
@@ -163,6 +165,7 @@ annotation class Import(val file: String)
         val repositories = ArrayList<String>()
         val dependsOn = ArrayList<String>()
         val includes = ArrayList<String>()
+        val imports = ArrayList<String>()
         file.useLines { lines ->
             lines
                 .map { it.trim() }
@@ -180,12 +183,15 @@ annotation class Import(val file: String)
                         it.startsWith("package") -> {
                             packageName = it.substringAfter("package ")
                         }
+                        it.startsWith("import ") -> {
+                            imports.add(it.substringAfter("import "))
+                        }
                         it.startsWith("fun main(") -> {
                             hasMain = true
                         }
                     }
                 }
         }
-        return Result(file, packageName, repositories, dependsOn, includes, hasMain)
+        return Result(file, packageName, repositories, dependsOn, includes, hasMain, imports)
     }
 }

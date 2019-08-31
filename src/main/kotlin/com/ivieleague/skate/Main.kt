@@ -56,7 +56,7 @@ fun main(vararg args: String) {
             val skateResult = Skate.getJarsForKt(file)
             JVM.runInteractive(
                 jars = skateResult.jars,
-                autoImport = skateResult.fileInfo.packageName
+                autoImports = skateResult.fileInfo.autoImports
             )
         }
         "a", "action" -> {
@@ -65,7 +65,7 @@ fun main(vararg args: String) {
             val skateResult = Skate.getJarsForKt(file)
             JVM.runWithLine(
                 jars = skateResult.jars,
-                autoImport = skateResult.fileInfo.packageName,
+                autoImports = skateResult.fileInfo.autoImports,
                 line = action
             )
         }
