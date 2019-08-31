@@ -183,7 +183,7 @@ annotation class Import(val file: String)
             if (it.startsWith("http")) {
                 resolveRemoteFile(it, output)
             } else {
-                file.parentFile.resolve(it)
+                file.absoluteFile.parentFile.resolve(it)
             }
         }
         return FullResult(

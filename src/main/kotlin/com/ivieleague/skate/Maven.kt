@@ -6,12 +6,13 @@ import org.eclipse.aether.RepositorySystemSession
 import org.eclipse.aether.artifact.Artifact
 import org.eclipse.aether.artifact.DefaultArtifact
 import org.eclipse.aether.collection.CollectRequest
+import org.eclipse.aether.collection.CollectResult
 import org.eclipse.aether.connector.basic.BasicRepositoryConnectorFactory
 import org.eclipse.aether.graph.Dependency
+import org.eclipse.aether.graph.DependencyNode
 import org.eclipse.aether.repository.LocalRepository
 import org.eclipse.aether.repository.RemoteRepository
 import org.eclipse.aether.resolution.ArtifactRequest
-import org.eclipse.aether.resolution.DependencyRequest
 import org.eclipse.aether.resolution.VersionRangeRequest
 import org.eclipse.aether.spi.connector.RepositoryConnectorFactory
 import org.eclipse.aether.spi.connector.transport.TransporterFactory
@@ -72,55 +73,75 @@ object Maven {
         }
     }
 
-    fun collect(
+    fun DependencyNode.allArtifacts(): Sequence<Artifact> =
+        (if (this.artifact != null) sequenceOf(this.artifact) else sequenceOf()) + this.children.asSequence().flatMap { it.allArtifacts() }
+
+    fun libraries(
         repositories: List<RemoteRepository>,
         dependencies: List<Dependency>,
-        session: RepositorySystemSession = session(),
         output: PrintStream = System.out
-    ): List<Artifact> {
-        output.println("Collecting dependencies...")
-        val deps = repositorySystem.resolveDependencies(
-            session,
-            DependencyRequest(
-                repositorySystem.collectDependencies(
-                    session,
-                    CollectRequest(dependencies, null, repositories)
-                ).root,
-                null
-            )
-        )
-        return deps.artifactResults.map {
-            if (it.exceptions.isNotEmpty()) {
-                if (it.exceptions.size == 1) {
-                    throw it.exceptions.first()
-                } else {
-                    throw Exception("Several exceptions: ${it.exceptions.joinToString("\n") { it.message ?: "?" }}")
-                }
-            } else it.artifact!!
-        }
-    }
-
-    fun libraries(repositories: List<RemoteRepository>, dependencies: List<Dependency>, output: PrintStream = System.out): List<Library> {
+    ): List<Library> {
         val session = session()
         val versionedDependencies = resolveVersions(repositories, dependencies, session, output)
-        val source = collect(repositories, versionedDependencies, session, output)
-        val secondaryResults = source.asSequence().flatMap {
-            it.additionalArtifacts().map { ArtifactRequest(it, repositories, null) }
-        }.toList().map {
-            output.println("Obtaining ${it.artifact.run { "$groupId:$artifactId:$version" }}")
-            repositorySystem.resolveArtifact(
-                session,
-                it
-            )
+        val dependencyResults: CollectResult = repositorySystem.collectDependencies(
+            session,
+            CollectRequest(versionedDependencies, null, repositories)
+        )
+
+        when (dependencyResults.exceptions.size) {
+            0 -> {
+            }
+            1 -> throw dependencyResults.exceptions.first()
+            else -> throw Exception("Several exceptions: ${dependencyResults.exceptions.joinToString("\n") {
+                it?.message ?: "?"
+            }}")
         }
-        return source.map { s ->
-            Library(
-                name = s.groupId + ":" + s.artifactId + ":" + s.version,
-                default = s.file,
-                javadoc = secondaryResults.find { it.artifact.groupId == s.groupId && it.artifact.artifactId == s.artifactId && it.artifact.classifier == "javadoc" }?.artifact?.file,
-                sources = secondaryResults.find { it.artifact.groupId == s.groupId && it.artifact.artifactId == s.artifactId && it.artifact.classifier == "sources" }?.artifact?.file
-            )
-        }
+
+        return dependencyResults.root.allArtifacts()
+            .map {
+                output.println("Obtaining ${it.run { "$groupId:$artifactId:$version" }}")
+                Library(
+                    name = it.run { "$groupId:$artifactId:$version" },
+                    default = repositorySystem.resolveArtifact(
+                        session,
+                        ArtifactRequest(it, repositories, null)
+                    ).let { result ->
+                        if (result.isResolved)
+                            result.artifact.file
+                        else
+                            throw IllegalStateException("Could not resolve ${it.run { "$groupId:$artifactId:$version" }}: ${result.exceptions.joinToString {
+                                it.message ?: ""
+                            }}")
+                    },
+                    javadoc = try {
+                        repositorySystem.resolveArtifact(
+                            session,
+                            ArtifactRequest(it.javadoc(), repositories, null)
+                        ).let { result ->
+                            if (result.isResolved)
+                                result.artifact.file
+                            else
+                                null
+                        }
+                    } catch (e: Exception) {
+                        null
+                    },
+                    sources = try {
+                        repositorySystem.resolveArtifact(
+                            session,
+                            ArtifactRequest(it.sources(), repositories, null)
+                        ).let { result ->
+                            if (result.isResolved)
+                                result.artifact.file
+                            else
+                                null
+                        }
+                    } catch (e: Exception) {
+                        null
+                    }
+                )
+            }
+            .toList()
     }
 
     val central = RemoteRepository.Builder("central", "default", "http://repo1.maven.org/maven2/").build()
@@ -138,10 +159,8 @@ object Maven {
     fun compile(stringAddress: String) = Dependency(DefaultArtifact(stringAddress), "compile")
 }
 
-fun Artifact.additionalArtifacts(): Sequence<Artifact> = sequenceOf(
-    DefaultArtifact(this.groupId, this.artifactId, "javadoc", "jar", this.version),
-    DefaultArtifact(this.groupId, this.artifactId, "sources", "jar", this.version)
-)
+fun Artifact.javadoc() = DefaultArtifact(this.groupId, this.artifactId, "javadoc", "jar", this.version)
+fun Artifact.sources() = DefaultArtifact(this.groupId, this.artifactId, "sources", "jar", this.version)
 
 fun main() {
     Maven.libraries(
