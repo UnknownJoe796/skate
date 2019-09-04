@@ -117,6 +117,7 @@ fun release(versionString: String, updateInfo: String = "") {
 
     //Build
     println("Building")
+    val exec = if (System.getProperty("os.name").toLowerCase().contains("win")) ".\\gradlew.bat" else "./gradlew"
     val process = ProcessBuilder(".\\gradlew.bat", "distZip").inheritIO().start()
     process.waitFor(60, TimeUnit.SECONDS)
     assert(process.exitValue() == 0)
