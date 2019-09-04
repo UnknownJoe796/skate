@@ -88,7 +88,7 @@ class GithubTasks(val git: Git, val remote: GHRepository) {
     }
 }
 
-val git = git(File("C:\\Users\\josep\\Projects\\standalone-kotlin-file"))
+val git = git(File("./"))
 val repo = github.getRepository("UnknownJoe796/skate")
 val tasks = GithubTasks(git, repo)
 
