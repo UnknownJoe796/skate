@@ -34,8 +34,11 @@ things like this:
 - `skate -p myFile.kt` - Creates/updates an IntelliJ project for the file without opening it.
 - `skate -i myFile.kt` - Opens a REPL with your definitions loaded in.
 
-There's an installer also bundled with the ZIP; to use it, place the folder where you want it to stay and run the 
-installer script for your platform.  As simple as that.
+### Windows Installation
+
+- Ensure 'Developer Mode' is enabled in Windows
+- Place the folder where you want it to be
+- Run the installer script as an administrator
 
 ## REPL Additions
 
