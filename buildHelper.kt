@@ -88,7 +88,7 @@ class GithubTasks(val git: Git, val remote: GHRepository) {
     }
 }
 
-val git = git(File("C:\\Users\\josep\\Projects\\standalone-kotlin-file"))
+val git = git(File("./"))
 val repo = github.getRepository("UnknownJoe796/skate")
 val tasks = GithubTasks(git, repo)
 
@@ -117,6 +117,7 @@ fun release(versionString: String, updateInfo: String = "") {
 
     //Build
     println("Building")
+    val exec = if (System.getProperty("os.name").toLowerCase().contains("win")) ".\\gradlew.bat" else "./gradlew"
     val process = ProcessBuilder(".\\gradlew.bat", "distZip").inheritIO().start()
     process.waitFor(60, TimeUnit.SECONDS)
     assert(process.exitValue() == 0)

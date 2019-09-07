@@ -6,7 +6,8 @@ import java.util.concurrent.TimeUnit
 
 fun File.createSymbolicLinkTo(other: File): Boolean {
     return try {
-        Files.createSymbolicLink(this.toPath(), other.toPath())
+        println("Linking $this <==> $other")
+        Files.createSymbolicLink(this.absoluteFile.toPath(), other.absoluteFile.toPath())
 
         true
     } catch (e: Exception) {

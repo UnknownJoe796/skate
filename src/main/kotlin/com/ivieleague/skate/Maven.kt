@@ -13,7 +13,6 @@ import org.eclipse.aether.graph.DependencyNode
 import org.eclipse.aether.repository.LocalRepository
 import org.eclipse.aether.repository.RemoteRepository
 import org.eclipse.aether.resolution.ArtifactRequest
-import org.eclipse.aether.resolution.VersionRangeRequest
 import org.eclipse.aether.spi.connector.RepositoryConnectorFactory
 import org.eclipse.aether.spi.connector.transport.TransporterFactory
 import org.eclipse.aether.transport.file.FileTransporterFactory
@@ -41,38 +40,6 @@ object Maven {
         return session
     }
 
-    fun resolveVersions(
-        repositories: List<RemoteRepository>,
-        dependencies: List<Dependency>,
-        session: RepositorySystemSession = session(),
-        output: PrintStream = System.out
-    ): List<Dependency> {
-        return dependencies.map {
-            var versionString = it.artifact.version
-            if (versionString.contains('+')) {
-                val beforeParts = versionString.substringBefore('+').split('.').mapNotNull { it.toIntOrNull() }
-                val before = beforeParts.joinToString(".")
-                val afterParts = beforeParts.dropLast(1) + (beforeParts.last() + 1)
-                val after = afterParts.joinToString(".")
-                versionString = "[$before, $after)"
-            }
-            if (versionString.contains('(') || versionString.contains('[')) {
-                val withVersionString = it.artifact.setVersion(versionString)
-                val result =
-                    repositorySystem.resolveVersionRange(
-                        session,
-                        VersionRangeRequest(withVersionString, repositories, null)
-                    )
-                Dependency(
-                    it.artifact.setVersion(result.highestVersion.toString()),
-                    it.scope,
-                    it.optional,
-                    it.exclusions
-                )
-            } else it
-        }
-    }
-
     fun DependencyNode.allArtifacts(): Sequence<Artifact> =
         (if (this.artifact != null) sequenceOf(this.artifact) else sequenceOf()) + this.children.asSequence().flatMap { it.allArtifacts() }
 
@@ -82,10 +49,9 @@ object Maven {
         output: PrintStream = System.out
     ): List<Library> {
         val session = session()
-        val versionedDependencies = resolveVersions(repositories, dependencies, session, output)
         val dependencyResults: CollectResult = repositorySystem.collectDependencies(
             session,
-            CollectRequest(versionedDependencies, null, repositories)
+            CollectRequest(dependencies, null, repositories)
         )
 
         when (dependencyResults.exceptions.size) {
@@ -154,7 +120,7 @@ object Maven {
     ).build()
     val defaultRepositories = listOf(central, jcenter, google, local)
 
-    const val kotlinStandardLibrary = "org.jetbrains.kotlin:kotlin-stdlib:1.3.+"
+    const val kotlinStandardLibrary = "org.jetbrains.kotlin:kotlin-stdlib:1.3.50"
 
     fun compile(stringAddress: String) = Dependency(DefaultArtifact(stringAddress), "compile")
 }
