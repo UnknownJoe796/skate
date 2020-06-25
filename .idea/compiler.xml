@@ -1,11 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="CompilerConfiguration">
-    <bytecodeTargetLevel>
+    <bytecodeTargetLevel target="1.8">
       <module name="skate.annotation-stubs.main" target="1.8" />
       <module name="skate.annotation-stubs.test" target="1.8" />
-      <module name="skate.main" target="1.8" />
-      <module name="skate.test" target="1.8" />
       <module name="standalone-kotlin-file.annotation-stubs.main" target="1.8" />
       <module name="standalone-kotlin-file.annotation-stubs.test" target="1.8" />
       <module name="standalone-kotlin-file.main" target="1.8" />

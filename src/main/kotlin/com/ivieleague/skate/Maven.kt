@@ -110,8 +110,8 @@ object Maven {
             .toList()
     }
 
-    val central = RemoteRepository.Builder("central", "default", "http://repo1.maven.org/maven2/").build()
-    val jcenter = RemoteRepository.Builder("jcenter", "default", "http://jcenter.bintray.com/").build()
+    val central = RemoteRepository.Builder("central", "default", "https://repo1.maven.org/maven2/").build()
+    val jcenter = RemoteRepository.Builder("jcenter", "default", "https://jcenter.bintray.com/").build()
     val google = RemoteRepository.Builder("google", "default", "https://dl.google.com/dl/android/maven2/").build()
     val local = RemoteRepository.Builder(
         "local",

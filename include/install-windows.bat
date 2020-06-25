@@ -1,6 +1,6 @@
 @echo off
 
-SET Location="%CD%"
+SET Location=%CD%
 if not exist "%Location%\bin" (
     echo You need to run this file from within the same directory.
     exit /B 1
