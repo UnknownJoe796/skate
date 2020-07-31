@@ -23,10 +23,33 @@ object JVM {
             jarLoader.addFile(jar)
         }
         jarLoader.loadClass(mainClass).let {
-            it.getDeclaredMethodOrNull("main", Array<Any?>::class.java)
-                ?.apply { invoke(jarLoader, *arguments) } ?: it.getDeclaredMethodOrNull("main")
-                ?.apply { invoke(jarLoader) }
-            ?: println("Could not find main function.")
+            it.getDeclaredMethodOrNull("main", Array<String>::class.java)
+                ?.apply { invoke(jarLoader, arguments) }
+                ?: it.methods.filter { it.name == "main" }
+                    .filter { it.parameters.size == arguments.size }
+                    .firstOrNull()
+                    ?.also {
+                        val params = it.parameters.mapIndexed { index, parameter ->
+                            val raw = arguments[index]
+                            if (raw is String) {
+                                when (parameter.type) {
+                                    Byte::class.java -> raw.toByteOrNull()
+                                    Short::class.java -> raw.toShortOrNull()
+                                    Int::class.java -> raw.toIntOrNull()
+                                    Long::class.java -> raw.toLongOrNull()
+                                    Float::class.java -> raw.toFloatOrNull()
+                                    Double::class.java -> raw.toDoubleOrNull()
+                                    Boolean::class.java -> raw.toBoolean()
+                                    Char::class.java -> raw.firstOrNull()
+                                    String::class.java -> raw
+                                    File::class.java -> File(raw)
+                                    else -> raw
+                                }
+                            } else raw
+                        }
+                        it.invoke(jarLoader, *params.toTypedArray())
+                    }
+                ?: println("Could not find main function.")
         }
     }
 
