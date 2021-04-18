@@ -137,7 +137,7 @@ annotation class Import(val file: String)
                 )}"
             )
         val fileClassName: String
-            get() = (packageName?.let { it + "." } ?: "") + file.nameWithoutExtension.capitalize() + "Kt"
+            get() = (packageName?.let { it + "." } ?: "") + file.nameWithoutExtension.split(Regex("[^a-zA-Z0-9_]+")).joinToString("_").capitalize() + "Kt"
         val main: String?
             get() = if (hasMain) fileClassName else null
         val autoImports: List<String> get() = imports + listOf(packageName + ".*")
