@@ -120,7 +120,7 @@ object Maven {
     ).build()
     val defaultRepositories = listOf(central, jcenter, google, local)
 
-    const val kotlinStandardLibrary = "org.jetbrains.kotlin:kotlin-stdlib:1.3.72"
+    const val kotlinStandardLibrary = "org.jetbrains.kotlin:kotlin-stdlib:1.5.30"
 
     fun compile(stringAddress: String) = Dependency(DefaultArtifact(stringAddress), "compile")
 }

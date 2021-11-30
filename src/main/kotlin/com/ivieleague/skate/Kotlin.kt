@@ -1,6 +1,8 @@
 package com.ivieleague.skate
 
 import org.jetbrains.kotlin.build.DEFAULT_KOTLIN_SOURCE_FILES_EXTENSIONS
+import org.jetbrains.kotlin.build.report.BuildReporter
+import org.jetbrains.kotlin.build.report.metrics.BuildMetricsReporterImpl
 import org.jetbrains.kotlin.cli.common.ExitCode
 import org.jetbrains.kotlin.cli.common.arguments.K2JSCompilerArguments
 import org.jetbrains.kotlin.cli.common.arguments.K2JVMCompilerArguments
@@ -8,14 +10,12 @@ import org.jetbrains.kotlin.cli.common.arguments.K2MetadataCompilerArguments
 import org.jetbrains.kotlin.cli.common.environment.setIdeaIoUseFallback
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageLocation
 import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSeverity
+import org.jetbrains.kotlin.cli.common.messages.CompilerMessageSourceLocation
 import org.jetbrains.kotlin.cli.common.messages.MessageCollector
 import org.jetbrains.kotlin.cli.common.repl.ScriptArgsWithTypes
 import org.jetbrains.kotlin.cli.metadata.K2MetadataCompiler
 import org.jetbrains.kotlin.config.Services
-import org.jetbrains.kotlin.incremental.EmptyICReporter
-import org.jetbrains.kotlin.incremental.IncrementalJsCompilerRunner
-import org.jetbrains.kotlin.incremental.IncrementalJvmCompilerRunner
-import org.jetbrains.kotlin.incremental.classpathAsList
+import org.jetbrains.kotlin.incremental.*
 import org.jetbrains.kotlin.incremental.multiproject.EmptyModulesApiHistory
 import org.jetbrains.kotlin.script.jsr223.KotlinJsr223JvmLocalScriptEngine
 import org.jetbrains.kotlin.script.jsr223.KotlinJsr223JvmLocalScriptEngineFactory
@@ -34,7 +34,7 @@ object Kotlin {
     data class CompilationMessage(
         val severity: CompilerMessageSeverity,
         val message: String,
-        val location: CompilerMessageLocation? = null
+        val location: CompilerMessageSourceLocation? = null
     )
 
     data class Result(
@@ -51,7 +51,11 @@ object Kotlin {
 
         override fun hasErrors(): Boolean = messages.any { it.severity.isError }
 
-        override fun report(severity: CompilerMessageSeverity, message: String, location: CompilerMessageLocation?) {
+        override fun report(
+            severity: CompilerMessageSeverity,
+            message: String,
+            location: CompilerMessageSourceLocation?
+        ) {
             messages.add(CompilationMessage(severity, message, location))
         }
     }
@@ -69,11 +73,12 @@ object Kotlin {
         val collector = CompilationMessageCollector()
         val code = IncrementalJvmCompilerRunner(
             workingDir = File(buildFolder, "cache"),
-            reporter = EmptyICReporter,
+            reporter = BuildReporter(EmptyICReporter, BuildMetricsReporterImpl()),
             usePreciseJavaTracking = true,
             outputFiles = emptyList(),
             buildHistoryFile = File(buildFolder, "build-history.bin"),
             modulesApiHistory = EmptyModulesApiHistory,
+            classpathChanges = ClasspathChanges.NotAvailable.UnableToCompute,
             kotlinSourceFilesExtensions = DEFAULT_KOTLIN_SOURCE_FILES_EXTENSIONS
         ).compile(
             allSourceFiles = source,
@@ -95,72 +100,6 @@ object Kotlin {
                 }
                 Jar.create(outputFolder, out)
             }
-        }
-        return Result(messages = collector.messages, output = out)
-    }
-
-    fun compileJs(
-        moduleName: String = "MyModule",
-        source: List<File>,
-        withLibraries: List<File>,
-        buildFolder: File = File("build"),
-        out: File = File(buildFolder, "$moduleName.jar"),
-        arguments: K2JSCompilerArguments.() -> Unit = {}
-    ): Result = suppressStandardOutputAndError {
-        val outputFolder = File(buildFolder, "js").also { it.mkdirs() }
-        val outputJs = File(outputFolder, "output.js")
-
-        val collector = CompilationMessageCollector()
-        val code = IncrementalJsCompilerRunner(
-            workingDir = File(buildFolder, "cache"),
-            reporter = EmptyICReporter,
-            buildHistoryFile = File(buildFolder, "build-history.bin"),
-            modulesApiHistory = EmptyModulesApiHistory
-        ).compile(
-            allSourceFiles = source,
-            args = K2JSCompilerArguments().apply {
-                freeArgs = source.map { it.toString() }
-                outputFile = outputJs.toString()
-                metaInfo = true
-                libraries = withLibraries.joinToString(File.pathSeparator)
-            }.apply(arguments),
-            messageCollector = collector,
-            providedChangedFiles = null
-        )
-        if (code == ExitCode.OK) {
-            if (outputJs.exists()) {
-                outputJs.resolve("META-INF").also { it.mkdirs() }.resolve("MANIFEST.MF").takeIf { !it.exists() }
-                    ?.outputStream()?.buffered()?.use {
-                    Jar.defaultManifest().write(it)
-                }
-                Jar.create(outputFolder, out)
-            }
-        }
-        return Result(messages = collector.messages, output = out)
-    }
-
-    fun compileMetadata(
-        moduleName: String = "MyModule",
-        source: List<File>,
-        withLibraries: List<File>,
-        buildFolder: File = File("build"),
-        out: File = File(buildFolder, "$moduleName.jar"),
-        arguments: K2MetadataCompilerArguments.() -> Unit = {}
-    ): Result = suppressStandardOutputAndError {
-        buildFolder.mkdirs()
-        val comp = K2MetadataCompiler()
-        val collector = CompilationMessageCollector()
-        val code = comp.exec(
-            messageCollector = collector,
-            services = Services.EMPTY,
-            arguments = K2MetadataCompilerArguments().apply {
-                freeArgs = source.map { it.toString() }
-                classpath = withLibraries.joinToString(File.pathSeparator)
-                destination = out.toString()
-            }.apply(arguments)
-        )
-        if (code != ExitCode.OK) {
-            throw Exception("Kotlin compiler exit code $code")
         }
         return Result(messages = collector.messages, output = out)
     }
